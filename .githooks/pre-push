@@ -1,0 +1,5 @@
+#!/bin/sh
+# Runs the CI validation before a push leaves this clone, so a broken skill or
+# manifest fails here in a second instead of on GitHub. CI is still the real
+# gate. `git push --no-verify` skips this hook for one push.
+bun run validate

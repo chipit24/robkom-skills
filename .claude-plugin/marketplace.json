@@ -1,0 +1,16 @@
+{
+  "name": "robkom-skills",
+  "owner": {
+    "name": "Rob Komaromi",
+    "url": "https://github.com/chipit24"
+  },
+  "description": "Rob Komaromi's personal Claude Code marketplace.",
+  "plugins": [
+    {
+      "name": "robkom",
+      "source": "./plugins/robkom",
+      "description": "Rob's general-purpose engineering skills and output styles.",
+      "category": "development"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "robkom",
+  "description": "Rob Komaromi's general-purpose engineering skills and output styles.",
+  "author": {
+    "name": "Rob Komaromi",
+    "url": "https://github.com/chipit24"
+  },
+  "repository": "https://github.com/chipit24/robkom-skills",
+  "keywords": ["skills", "output-styles", "engineering"]
+}
