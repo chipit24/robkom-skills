@@ -26,8 +26,8 @@ Keep one findings file for the whole run, in a temporary location outside the re
 
 Every finding needs evidence from exercising the code. Drop a finding that rests only on an assumption about what the code does. For example, an option that looks redundant may be there for a case the code doesn't show.
 
-- Exercise the change in the built-in browser against the running app whenever the app's UI can reach it. Test an API or backend change through the UI too, the way a real user would reach it.
-- Tests and scripts are further evidence. They matter most for an API or backend change, because a caller can skip the UI. When a finding says the code behaves wrongly and the project has tests, make sure a test fails because of the finding. When the project has none, write a throwaway one.
+- Exercise the change in the built-in browser against the running app whenever the app's UI can reach it. Test an API or backend change through the UI too, the way a real user would reach it. Backend tests can pass while UI wiring, auth, or client state breaks.
+- Tests and scripts are further evidence. They matter most for an API or backend change, because a caller can skip the UI. When a finding says the code behaves wrongly and the project has tests, make sure a test fails because of the finding before you fix it. Otherwise you can fix a bug that wasn't real, or write a test that passes by accident. When the project has no tests, write a throwaway one.
 
 Verify each fix the same way.
 

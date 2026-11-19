@@ -19,7 +19,7 @@ Auto-update is off by default for marketplaces outside of Anthropic's. You can t
 | --- | --- |
 | [code-comments](plugins/robkom/skills/code-comments/SKILL.md) | Makes sure comments explain why, not what. A comment that states a rule becomes a type, assertion, or test instead. |
 | [full-review](plugins/robkom/skills/full-review/SKILL.md) | Reviews the current branch in a new subagent, verifies each finding by running the code, fixes the findings worth fixing in one commit each, and re-reviews, for at most three reviews. It commits its fixes, so it runs only when you type `/robkom:full-review`. |
-| [parallel-worktree-setup](plugins/robkom/skills/parallel-worktree-setup/SKILL.md) | Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data. Adds scripts to provision a worktree, tear it down, and clean up after deleted worktrees. It changes the project, so it runs only when you type `/robkom:parallel-worktree-setup`. |
+| [parallel-worktree-setup](plugins/robkom/skills/parallel-worktree-setup/SKILL.md) | Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data. Adds commands or scripts to provision a worktree, tear it down, and clean up after deleted worktrees. It changes the project, so it runs only when you type `/robkom:parallel-worktree-setup`. |
 
 ## Output style
 
@@ -91,9 +91,11 @@ To run the pinned Claude Code, use `bun run claude <args>`.
 
 Every skill in this repo follows these rules:
 
-- **A skill holds what the model can't know by itself.** That means the author's preferences, their decisions, and the facts of their setup. If a model could have written the whole skill with no input from its author, the skill isn't needed. A skill leaves out anything a capable model would most likely do correctly without being told.
-- **A skill describes the outcome and leaves the method to the model.** It says what must be true when the work is done, and trusts the model to work out how to get there. This keeps the skill useful as models improve. A skill that tells the model how to do the work can get worse, because its instructions may constrain or confuse a model that would have done better without them. A skill that describes the outcome leaves room for a more capable model to do the work better.
+- **A skill holds what the model won't reliably know or choose on its own.** That means your preferences for a task and its result, including standards a capable model knows in theory but only applies inconsistently (for example, only when the surrounding code already does). It leaves out what a capable model reliably does right without being told.
+- **A skill describes the outcome and leaves the method to the model.** Saying what must be true when the work is done, and where to stop and ask instead of guessing, keeps the skill useful as models improve, rather than constraining a stronger model with rigid steps. The exception is a method the model won't reliably do on its own: a tool it keeps calling wrongly, a guardrail against a model blind spot (such as reviewing in a fresh context), or a process you want followed consistently. When a skill prescribes a method, it says what goes wrong without it, so the model can adapt when the situation differs and you know when a newer model makes the step safe to drop.
 - **A skill informs the model's judgment and doesn't replace it.** An instruction comes with its reason where the reason isn't obvious, so the model can tell where the instruction applies and where it doesn't. A technique that has worked before is offered as an option, for the model to use where it fits.
+
+Not everything belongs in a skill. Facts about a specific project (its setup, decisions, and architecture) belong in the project's docs, where the model can find them on its own. Instructions that nearly every session needs belong in `CLAUDE.md`.
 
 ## Adding a skill
 

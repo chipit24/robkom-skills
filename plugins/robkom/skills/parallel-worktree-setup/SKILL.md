@@ -1,6 +1,6 @@
 ---
 name: parallel-worktree-setup
-description: Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data, with scripts to provision a worktree and tear it down.
+description: Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data, with commands or scripts to provision a worktree and tear it down.
 disable-model-invocation: true
 ---
 
@@ -15,7 +15,7 @@ First survey how the app runs today and what worktree support the project alread
 - **A provisioned worktree is isolated and has what it needs to run the app by itself.** Whatever a running copy of the app needs for itself, the worktree gets its own, such as its own ports, its own sign-in session and its own copy of each database. It can't accidentally change anything it shares with the main checkout or another worktree.
 - **The main checkout behaves as it did before.**
 - **Provisioning is opt-in.** A person or tool that only needs a copy of the code creates a plain worktree and never has to provision it.
-- **One script provisions a worktree, one tears it down, and one cleans up after worktrees that were deleted without teardown.** All three are easy to run and safe. A mistake, such as running one in the wrong place, twice, or at the same time as another, can't damage the main checkout's data or another worktree's.
+- **Commands or scripts provision a worktree, tear it down, and clean up after worktrees that were deleted without teardown.** All three operations are easy to run, fit the project's existing conventions, and are safe. A mistake, such as running one in the wrong place, twice, or at the same time as another, can't damage the main checkout's data or another worktree's.
 
 ## Patterns that have worked
 
