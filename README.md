@@ -45,6 +45,7 @@ plugins/robkom/
   output-styles/<name>.md           One file per output style
 scripts/validate.ts                 Validation run locally and in CI
 .githooks/pre-push                  Runs the validation before every push
+sbxenv.yaml                         Optional Docker Sandbox environment
 drafts/                             Skills under review (gitignored)
 ```
 
@@ -85,6 +86,21 @@ git config core.hooksPath .githooks
 
 `git push --no-verify` skips it for one push.
 
+### Docker sandbox (optional)
+
+[sbxenv.yaml](sbxenv.yaml) defines an optional [Docker Sandbox](https://docs.docker.com/ai/sandboxes/) (`sbx`) environment for this repo. It mounts this clone into a Linux microVM, includes `t3code-kit`, installs the Bun version pinned in [package.json](package.json), and runs `bun ci`.
+
+From the root of this clone, create the sandbox and approve the plan when prompted:
+
+```bash
+# Default agent (Google Antigravity)
+sbx env create
+
+# Or choose another agent (such as claude, codex, or opencode)
+sbx env create --env-arg agent=claude
+```
+
+Run `sbx env run` to open the agent in your terminal, or connect from an SSH client (such as T3 Code or Claude Desktop) to `robkom-skills.sbx` and open the same folder path this clone uses on your host. To give `gh` access to GitHub, store a token on your host with `sbx secret set github --sandbox robkom-skills` rather than logging in inside the VM. See the [Docker Sandboxes docs](https://docs.docker.com/ai/sandboxes/) for one-time SSH setup and other sandbox options.
 
 ## Skill philosophy
 

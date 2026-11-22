@@ -1,0 +1,33 @@
+# Docker Sandbox environment file (https://docs.docker.com/ai/sandboxes/configuration/environment-files/).
+# Kept in the repo root so sbx mounts it read-only inside direct-mounted sandboxes.
+schemaVersion: "1"
+name: robkom-skills
+agent: ${{ env.args.agent }}
+
+args:
+  agent:
+    default: antigravity
+    description: Agent name (such as antigravity, claude, codex, or opencode) or agent kit reference
+
+workspace: .
+
+kits:
+  - docker.io/sbx/t3code-kit:latest
+
+lifecycle:
+  postCreate:
+    - name: Install Bun and project dependencies
+      command: |
+        sbx exec "$SBX_SANDBOX_NAME" bash -lc '
+          set -euo pipefail
+          cd "$1"
+          BUN_VER=$(jq -r .packageManager package.json)
+          BUN_VER=${BUN_VER#bun@}
+          if [ "$(bun --version 2>/dev/null || true)" != "$BUN_VER" ]; then
+            curl -fsSL https://bun.com/install | bash -s "bun-v${BUN_VER}"
+            # Symlink into /usr/local/bin so non-interactive shells and git hooks find bun.
+            sudo ln -sf "$HOME/.bun/bin/bun" /usr/local/bin/bun
+            sudo ln -sf "$HOME/.bun/bin/bunx" /usr/local/bin/bunx
+          fi
+          bun ci
+        ' _ "$SBX_WORKSPACE"
