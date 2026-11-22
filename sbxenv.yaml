@@ -31,3 +31,12 @@ lifecycle:
           fi
           bun ci
         ' _ "$SBX_WORKSPACE"
+    - name: Configure Git to use gh HTTPS auth
+      command: |
+        sbx exec "$SBX_SANDBOX_NAME" bash -lc '
+          set -euo pipefail
+          # The repo on the host may use an SSH remote URL (git@github.com:...).
+          # The sandbox has no SSH keys and authenticates over HTTPS via the sbx GH_TOKEN proxy.
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          gh auth setup-git
+        '
