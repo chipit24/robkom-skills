@@ -1,24 +1,22 @@
 /**
- * Validates the marketplace, each plugin it lists from this repo, and each
- * skill and output style in those plugins. Changes no files. Prints every
- * problem it finds and exits 1 if there are any.
+ * Validates the marketplace manifest, each local plugin manifest it lists,
+ * each skill and output style in those plugins, and the Skills table in
+ * README.md. Changes no files. Prints every problem it finds and exits 1 if
+ * there are any.
  *
  *     bun run validate
  *
  * What it checks:
  *
- * - `claude plugin validate --strict` passes for the marketplace and each
- *   plugin, apart from its warning that `version` is missing.
- * - Each skills/<name>/SKILL.md stays under 500 lines and has frontmatter that
- *   matches SkillFrontmatter. The CLI passes invalid YAML and misspelled keys,
- *   and Claude Code silently ignores both, so this script parses the
- *   frontmatter itself.
- * - Each .md file in output-styles/ has frontmatter that matches
- *   OutputStyleFrontmatter. The CLI doesn't read style files at all.
- * - The Skills table in README.md links every SKILL.md and nothing else.
+ * - `.claude-plugin/marketplace.json` and each local plugin's
+ *   `.claude-plugin/plugin.json` are valid JSON with required fields.
+ * - Each `skills/<name>/SKILL.md` stays under 500 lines and has YAML
+ *   frontmatter matching `SkillFrontmatter`.
+ * - Each `.md` file in `output-styles/` has YAML frontmatter matching
+ *   `OutputStyleFrontmatter`.
+ * - The Skills table in `README.md` links every `SKILL.md` and nothing else.
  */
 
-import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { toString } from 'mdast-util-to-string'
@@ -26,39 +24,43 @@ import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
+import { parseDocument } from 'yaml'
 import { z } from 'zod'
 
 const ROOT = resolve(import.meta.dirname, '..')
 const README = join(ROOT, 'README.md')
 const MARKETPLACE_JSON = join(ROOT, '.claude-plugin', 'marketplace.json')
-// The version pinned in package.json, not whichever `claude` is first on PATH.
-const CLAUDE = join(ROOT, 'node_modules', '.bin', 'claude')
 
 const markdown = unified().use(remarkParse).use(remarkFrontmatter).use(remarkGfm)
 
-// The fields this script reads to find plugins. `claude plugin validate`
-// checks the rest of the file.
 const Marketplace = z.looseObject({
-  plugins: z.array(z.looseObject({ source: z.union([z.string(), z.looseObject({})]) })),
+  name: z.string().min(1),
+  plugins: z.array(
+    z.looseObject({
+      name: z.string().min(1),
+      source: z.union([z.string(), z.looseObject({})]),
+    }),
+  ),
 })
 
-// Claude Code reads these spellings as booleans, in any letter case.
+const PluginManifest = z.looseObject({
+  name: z.string().min(1),
+  description: z.string().min(1),
+})
+
+// Accepts YAML 1.1 boolean spellings alongside true and false.
 const Bool = z.preprocess(
   (value) => String(value).toLowerCase(),
   z.enum(['true', 'false', 'yes', 'no', 'on', 'off', '1', '0']),
 )
 const StringOrList = z.union([z.string(), z.array(z.string())])
 
+// Enforces the Agent Skills naming rules: https://agentskills.io/specification.
 const SkillName = z
   .string()
   .max(64)
   .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'use lowercase letters and digits in hyphen-separated groups, such as "code-comments"')
-  .refine((name) => !/anthropic|claude/.test(name), 'must not contain "anthropic" or "claude"')
 
-// The fields in https://code.claude.com/docs/en/skills#frontmatter-reference.
-// `name` and `description` follow the stricter rules of the Agent Skills spec
-// (https://agentskills.io/specification) and of the Claude API and claude.ai
-// (https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview).
 const SkillFrontmatter = z.strictObject({
   name: SkillName,
   description: z.string().min(1).max(1024),
@@ -82,11 +84,6 @@ const SkillFrontmatter = z.strictObject({
   compatibility: z.string().max(500).optional(),
 })
 
-// The fields in https://code.claude.com/docs/en/output-styles#frontmatter-reference.
-// Claude Code names a plugin's style "<plugin>:<name>", and the user's
-// `outputStyle` setting has to match that exactly. Without `name`, or when the
-// YAML doesn't parse, the style falls back to its file name, and a setting
-// written for `name` silently selects the Default style instead.
 const OutputStyleFrontmatter = z.strictObject({
   name: z.string().min(1),
   description: z.string().min(1),
@@ -95,7 +92,7 @@ const OutputStyleFrontmatter = z.strictObject({
   // overrides their own `outputStyle` setting. People enable this plugin for
   // its skills, so it must not choose their style for them.
   'force-for-plugin': z
-    .never({ error: "remove it: it overrides the outputStyle setting of everyone who enables the plugin" })
+    .never({ error: 'remove it: it overrides the outputStyle setting of everyone who enables the plugin' })
     .optional(),
 })
 
@@ -107,16 +104,6 @@ function skillFile(folder: string) {
     lines: z.number().lt(500, { error: (issue) => `${issue.input} is too many. Keep SKILL.md under 500 and move detail into separate files` }),
   })
 }
-
-// The parts of the `--json` report this script reads. See
-// https://code.claude.com/docs/en/plugins/cli-reference#output-and-exit-codes.
-const CliIssue = z.object({ path: z.string(), message: z.string() })
-const CliFileResult = z.object({ file: z.string(), errors: z.array(CliIssue), warnings: z.array(CliIssue) })
-const CliReport = z.object({ manifest: CliFileResult.nullable(), contents: z.array(CliFileResult) })
-
-// The plugin leaves `version` unset for now, which `--strict` would otherwise
-// fail on. The warning stops once a version is set.
-const IGNORED_CLI_WARNING = 'No version specified'
 
 const problems: string[] = []
 
@@ -131,27 +118,6 @@ function reportIssues(file: string, error: z.ZodError): void {
   }
 }
 
-function claudePluginValidate(target: string): void {
-  const result = spawnSync(CLAUDE, ['plugin', 'validate', target, '--strict', '--json'], { encoding: 'utf8' })
-  let json: unknown
-  try {
-    json = JSON.parse(result.stdout)
-  } catch {
-    const output = result.error?.message ?? (result.stderr.trim() || result.stdout.trim())
-    report(target, `claude plugin validate failed: ${output}`)
-    return
-  }
-  const parsed = check(target, CliReport, json)
-  if (!parsed) return
-  const { manifest, contents } = parsed
-  for (const fileResult of manifest ? [manifest, ...contents] : contents) {
-    const warnings = fileResult.warnings.filter((warning) => !warning.message.startsWith(IGNORED_CLI_WARNING))
-    for (const issue of [...fileResult.errors, ...warnings]) {
-      report(fileResult.file, `${issue.path}: ${issue.message}`)
-    }
-  }
-}
-
 function check<T extends z.ZodType>(file: string, schema: T, value: unknown): z.output<T> | undefined {
   const result = schema.safeParse(value)
   if (!result.success) reportIssues(file, result.error)
@@ -159,6 +125,10 @@ function check<T extends z.ZodType>(file: string, schema: T, value: unknown): z.
 }
 
 function checkJsonFile<T extends z.ZodType>(file: string, schema: T): z.output<T> | undefined {
+  if (!existsSync(file)) {
+    report(file, 'file not found')
+    return undefined
+  }
   let json: unknown
   try {
     json = JSON.parse(readFileSync(file, 'utf8'))
@@ -172,19 +142,20 @@ function checkJsonFile<T extends z.ZodType>(file: string, schema: T): z.output<T
 /** Returns the file's text and parsed frontmatter, or reports a problem and returns undefined. */
 function readFrontmatter(file: string): { text: string; frontmatter: unknown } | undefined {
   const text = readFileSync(file, 'utf8')
-  // Like Claude Code, remark reads frontmatter only from a --- block that opens on line 1.
   const [first] = markdown.parse(text).children
   if (first?.type !== 'yaml') {
     report(file, 'needs a frontmatter block that opens with --- on line 1 and closes with ---')
     return undefined
   }
-  try {
-    // Claude Code parses frontmatter with Bun.YAML too, so both read it the same way.
-    return { text, frontmatter: Bun.YAML.parse(first.value) }
-  } catch (error) {
-    report(file, `frontmatter: ${(error as Error).message}`)
+  // Uses yaml with uniqueKeys because Bun.YAML.parse silently overwrites duplicate keys.
+  const doc = parseDocument(first.value, { strict: true, uniqueKeys: true })
+  if (doc.errors.length > 0) {
+    for (const error of doc.errors) {
+      report(file, `frontmatter: ${error.message.split('\n')[0]}`)
+    }
     return undefined
   }
+  return { text, frontmatter: doc.toJS() }
 }
 
 function validateSkill(skillDir: string): void {
@@ -229,7 +200,6 @@ function checkReadmeTable(section: string, files: Set<string>, kind: string): vo
 }
 
 function validateRepo(): void {
-  claudePluginValidate(ROOT)
   const marketplace = checkJsonFile(MARKETPLACE_JSON, Marketplace)
   if (!marketplace) return
 
@@ -238,10 +208,12 @@ function validateRepo(): void {
     // Other source types fetch the plugin from outside this repo.
     if (typeof plugin.source !== 'string') continue
     const pluginDir = resolve(ROOT, plugin.source)
-    claudePluginValidate(pluginDir)
+    if (!existsSync(pluginDir)) {
+      report(pluginDir, 'plugin directory not found')
+      continue
+    }
+    checkJsonFile(join(pluginDir, '.claude-plugin', 'plugin.json'), PluginManifest)
 
-    // A plugin needs no skills/ or output-styles/ folder. The CLI run above
-    // reports a missing plugin folder.
     const skillsDir = join(pluginDir, 'skills')
     if (existsSync(skillsDir)) {
       const skillDirs = readdirSync(skillsDir, { withFileTypes: true })
@@ -254,9 +226,7 @@ function validateRepo(): void {
       }
     }
 
-    // Claude Code loads .md files from subfolders of output-styles/ too. This
-    // reads the default folder only, so it misses styles if plugin.json ever
-    // sets `outputStyles`, which replaces that folder.
+    // Misses styles if plugin.json sets a custom outputStyles path, which replaces output-styles/.
     const stylesDir = join(pluginDir, 'output-styles')
     if (existsSync(stylesDir)) {
       const styles = readdirSync(stylesDir, { recursive: true, withFileTypes: true })

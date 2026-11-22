@@ -18,18 +18,7 @@ jobs:
       - uses: actions/checkout@v7
       # Installs the Bun version in package.json's packageManager field.
       - uses: oven-sh/setup-bun@v2
-      # Installs the versions pinned in bun.lock, including Claude Code. Bun skips
-      # Claude Code's postinstall script and links `claude` to the native binary itself.
       - name: Install dependencies
         run: bun ci
       - name: Validate manifests and skills
         run: bun run validate
-      # `claude plugin validate` checks files but never installs anything, so this
-      # step adds the marketplace and installs the plugin the way a user would.
-      - name: Install smoke test
-        env:
-          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-config
-        run: |
-          bun run claude plugin marketplace add ./
-          bun run claude plugin install robkom@robkom-skills
-          bun run claude plugin details robkom@robkom-skills

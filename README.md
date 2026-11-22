@@ -65,7 +65,7 @@ To try the plugin in a single session without installing it:
 claude --plugin-dir ./plugins/robkom
 ```
 
-Install the dependencies with [Bun](https://bun.com). They include a pinned Claude Code:
+Install the dependencies with [Bun](https://bun.com):
 
 ```bash
 bun install
@@ -85,7 +85,6 @@ git config core.hooksPath .githooks
 
 `git push --no-verify` skips it for one push.
 
-To run the pinned Claude Code, use `bun run claude <args>`.
 
 ## Skill philosophy
 
