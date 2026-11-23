@@ -1,6 +1,6 @@
 ---
 name: full-review
-description: Reviews the current branch in a new subagent, verifies each finding and each fix by running the code, and repeats for at most three reviews.
+description: Reviews the current branch in a new subagent, verifies each finding and each fix by running the code, and repeats for at most three reviews. Use only when the user explicitly invokes or asks to run full-review, because this skill edits code and creates commits. Do not trigger automatically.
 disable-model-invocation: true
 ---
 
@@ -12,6 +12,7 @@ Run three reviews at most. A well-scoped change settles within three. If the thi
 
 ## Before starting
 
+- If the user did not explicitly invoke or ask to run this skill, stop and ask them to confirm they want to proceed.
 - Stop and ask the user if the current branch is the default branch or the working tree has uncommitted changes. Either one is most likely a mistake.
 - Look for docs on what the branch changes, such as an ADR, a feature spec, or review notes. If there are none, tell the user, then continue. Without docs, the review rests on assumptions the user may not share, so it can churn or fix things the user would have left alone. The user may want to look more closely at what it changes.
 - Run the project's own checks, such as its tests, linter, and build, when it has them. Stop and ask the user if any fail, and say which ones. A review of a branch with failing checks spends its effort on problems the checks already report.

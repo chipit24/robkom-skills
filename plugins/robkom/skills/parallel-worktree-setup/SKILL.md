@@ -1,12 +1,12 @@
 ---
 name: parallel-worktree-setup
-description: Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data, with commands or scripts to provision a worktree and tear it down.
+description: Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data, with commands or scripts to provision a worktree and tear it down. Use only when the user explicitly invokes or asks to run parallel-worktree-setup, because this skill modifies the project setup. Do not trigger automatically.
 disable-model-invocation: true
 ---
 
 # Parallel worktree setup
 
-Set this project up so that its app can run from several git worktrees at the same time.
+Set this project up so that its app can run from several git worktrees at the same time. If the user did not explicitly invoke or ask to run this skill, stop and ask them to confirm they want to proceed.
 
 First survey how the app runs today and what worktree support the project already has. If it has none, build the setup from scratch. If it has some, update it or build on it.
 

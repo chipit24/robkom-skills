@@ -12,6 +12,9 @@
  *   `.claude-plugin/plugin.json` are valid JSON with required fields.
  * - Each `skills/<name>/SKILL.md` stays under 500 lines and has YAML
  *   frontmatter matching `SkillFrontmatter`.
+ * - Each skill's optional `agents/openai.yaml` is valid YAML matching
+ *   `OpenAiSkillMetadata`, and manual-only skills disable automatic
+ *   invocation in both `SKILL.md` and `agents/openai.yaml`.
  * - Each `.md` file in `output-styles/` has YAML frontmatter matching
  *   `OutputStyleFrontmatter`.
  * - The Skills table in `README.md` links every `SKILL.md` and nothing else.
@@ -53,7 +56,12 @@ const Bool = z.preprocess(
   (value) => String(value).toLowerCase(),
   z.enum(['true', 'false', 'yes', 'no', 'on', 'off', '1', '0']),
 )
+const TRUTHY_BOOLS = new Set(['true', 'yes', 'on', '1'])
 const StringOrList = z.union([z.string(), z.array(z.string())])
+
+function isTruthyBool(value: z.output<typeof Bool> | undefined): boolean {
+  return value !== undefined && TRUTHY_BOOLS.has(value)
+}
 
 // Enforces the Agent Skills naming rules: https://agentskills.io/specification.
 const SkillName = z
@@ -82,6 +90,38 @@ const SkillFrontmatter = z.strictObject({
   metadata: z.record(z.string(), z.unknown()).optional(),
   license: z.string().optional(),
   compatibility: z.string().max(500).optional(),
+})
+
+// Codex parses agents/openai.yaml with serde_yaml, which only accepts true and false for booleans.
+const OpenAiSkillMetadata = z.strictObject({
+  interface: z
+    .strictObject({
+      display_name: z.string().min(1).optional(),
+      short_description: z.string().min(1).optional(),
+      icon_small: z.string().min(1).optional(),
+      icon_large: z.string().min(1).optional(),
+      brand_color: z.string().min(1).optional(),
+      default_prompt: z.string().min(1).optional(),
+    })
+    .optional(),
+  policy: z
+    .strictObject({
+      allow_implicit_invocation: z.boolean().optional(),
+      products: z.array(z.string().min(1)).optional(),
+    })
+    .optional(),
+  dependencies: z
+    .strictObject({
+      tools: z
+        .array(
+          z.looseObject({
+            type: z.string().min(1),
+            value: z.string().min(1),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
 })
 
 const OutputStyleFrontmatter = z.strictObject({
@@ -139,6 +179,24 @@ function checkJsonFile<T extends z.ZodType>(file: string, schema: T): z.output<T
   return check(file, schema, json)
 }
 
+function parseStrictYaml(file: string, source: string, prefix = ''): { value: unknown } | undefined {
+  // Uses yaml with uniqueKeys because Bun.YAML.parse silently overwrites duplicate keys.
+  const doc = parseDocument(source, { strict: true, uniqueKeys: true })
+  if (doc.errors.length > 0) {
+    for (const error of doc.errors) {
+      report(file, `${prefix}${error.message.split('\n')[0]}`)
+    }
+    return undefined
+  }
+  return { value: doc.toJS() }
+}
+
+function checkYamlFile<T extends z.ZodType>(file: string, schema: T): z.output<T> | undefined {
+  const parsed = parseStrictYaml(file, readFileSync(file, 'utf8'))
+  if (!parsed) return undefined
+  return check(file, schema, parsed.value)
+}
+
 /** Returns the file's text and parsed frontmatter, or reports a problem and returns undefined. */
 function readFrontmatter(file: string): { text: string; frontmatter: unknown } | undefined {
   const text = readFileSync(file, 'utf8')
@@ -147,19 +205,17 @@ function readFrontmatter(file: string): { text: string; frontmatter: unknown } |
     report(file, 'needs a frontmatter block that opens with --- on line 1 and closes with ---')
     return undefined
   }
-  // Uses yaml with uniqueKeys because Bun.YAML.parse silently overwrites duplicate keys.
-  const doc = parseDocument(first.value, { strict: true, uniqueKeys: true })
-  if (doc.errors.length > 0) {
-    for (const error of doc.errors) {
-      report(file, `frontmatter: ${error.message.split('\n')[0]}`)
-    }
-    return undefined
-  }
-  return { text, frontmatter: doc.toJS() }
+  const parsed = parseStrictYaml(file, first.value, 'frontmatter: ')
+  if (!parsed) return undefined
+  return { text, frontmatter: parsed.value }
 }
 
 function validateSkill(skillDir: string): void {
   const skillMd = join(skillDir, 'SKILL.md')
+  const openaiYaml = join(skillDir, 'agents', 'openai.yaml')
+  const hasOpenaiYaml = existsSync(openaiYaml)
+  const openaiMetadata = hasOpenaiYaml ? checkYamlFile(openaiYaml, OpenAiSkillMetadata) : undefined
+
   if (!existsSync(skillMd)) {
     report(skillDir, 'missing SKILL.md')
     return
@@ -167,7 +223,22 @@ function validateSkill(skillDir: string): void {
   const parsed = readFrontmatter(skillMd)
   if (!parsed) return
   const { text, frontmatter } = parsed
-  check(skillMd, skillFile(basename(skillDir)), { frontmatter, lines: text.trimEnd().split('\n').length })
+  const validSkill = check(skillMd, skillFile(basename(skillDir)), {
+    frontmatter,
+    lines: text.trimEnd().split('\n').length,
+  })
+  if (!validSkill) return
+
+  const modelInvocationDisabled = isTruthyBool(validSkill.frontmatter['disable-model-invocation'])
+  const implicitInvocationDisabled = openaiMetadata?.policy?.allow_implicit_invocation === false
+
+  if (modelInvocationDisabled && !hasOpenaiYaml) {
+    report(skillMd, 'sets disable-model-invocation, so add agents/openai.yaml with policy.allow_implicit_invocation: false for Codex')
+  } else if (modelInvocationDisabled && openaiMetadata && !implicitInvocationDisabled) {
+    report(openaiYaml, 'policy.allow_implicit_invocation must be false to match disable-model-invocation in SKILL.md')
+  } else if (!modelInvocationDisabled && implicitInvocationDisabled) {
+    report(openaiYaml, 'policy.allow_implicit_invocation is false, but SKILL.md does not set disable-model-invocation: true')
+  }
 }
 
 function validateOutputStyle(file: string): void {

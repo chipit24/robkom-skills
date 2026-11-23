@@ -37,8 +37,8 @@ npx skills add chipit24/robkom-skills --skill code-comments -a cursor -g
 | Skill | What it does |
 | --- | --- |
 | [code-comments](plugins/robkom/skills/code-comments/SKILL.md) | Makes sure comments explain why, not what. A comment that states a rule becomes a type, assertion, or test instead. |
-| [full-review](plugins/robkom/skills/full-review/SKILL.md) | Reviews the current branch in a new subagent, verifies each finding by running the code, fixes the findings worth fixing in one commit each, and re-reviews, for at most three reviews. It commits its fixes, so it runs only when you type `/robkom:full-review`. |
-| [parallel-worktree-setup](plugins/robkom/skills/parallel-worktree-setup/SKILL.md) | Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data. Adds commands or scripts to provision a worktree, tear it down, and clean up after deleted worktrees. It changes the project, so it runs only when you type `/robkom:parallel-worktree-setup`. |
+| [full-review](plugins/robkom/skills/full-review/SKILL.md) | Reviews the current branch in a new subagent, verifies each finding by running the code, fixes the findings worth fixing in one commit each, and re-reviews, for at most three reviews. It commits its fixes, so it is configured to run only when you invoke it explicitly (such as `/robkom:full-review` or `$full-review`). |
+| [parallel-worktree-setup](plugins/robkom/skills/parallel-worktree-setup/SKILL.md) | Sets a project up so its app can run from several git worktrees at the same time, each with its own ports, sign-in and data. Adds commands or scripts to provision a worktree, tear it down, and clean up after deleted worktrees. It changes the project, so it is configured to run only when you invoke it explicitly (such as `/robkom:parallel-worktree-setup` or `$parallel-worktree-setup`). |
 
 ## Output style
 
@@ -61,6 +61,7 @@ The value is case-sensitive. A value that doesn't match exactly gives the Defaul
 plugins/robkom/
   .claude-plugin/plugin.json        Plugin manifest
   skills/<name>/SKILL.md            One folder per skill
+  skills/<name>/agents/openai.yaml  Optional Codex invocation policy
   output-styles/<name>.md           One file per output style
 scripts/validate.ts                 Validation run locally and in CI
 .githooks/pre-push                  Runs the validation before every push
