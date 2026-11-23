@@ -4,6 +4,8 @@ My personal Claude Code plugin marketplace, which ships one plugin (`robkom`). I
 
 ## Installation
 
+### Claude Code plugin
+
 ```bash
 claude plugin marketplace add chipit24/robkom-skills
 claude plugin install robkom@robkom-skills
@@ -12,6 +14,23 @@ claude plugin install robkom@robkom-skills
 Skills are namespaced by the plugin, e.g. `/robkom:code-comments`.
 
 Auto-update is off by default for marketplaces outside of Anthropic's. You can turn it on in `/plugin` → Marketplaces → robkom-skills → Enable auto-update.
+
+### Other agents or individual skills
+
+To install individual skills, or to use them in another agent such as Cursor, Codex, or OpenCode, use the [`skills`](https://github.com/vercel-labs/skills) CLI:
+
+```bash
+# List available skills
+npx skills add chipit24/robkom-skills --list
+
+# Choose skills, agents, and project or global scope interactively
+npx skills add chipit24/robkom-skills
+
+# Install one skill globally for a specific agent
+npx skills add chipit24/robkom-skills --skill code-comments -a cursor -g
+```
+
+`npx skills` installs only the skills, without the `/robkom:` prefix or the [Clear](plugins/robkom/output-styles/clear.md) output style. Run `npx skills update` to pull updates to installed skills, and run `npx skills add` again to pick up newly added skills. In Claude Code, use either the plugin or `npx skills`, not both, or each skill will load twice.
 
 ## Skills
 
