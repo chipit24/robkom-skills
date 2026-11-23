@@ -120,7 +120,7 @@ sbx env create
 sbx env create --env-arg agent=claude
 ```
 
-Run `sbx env run` to open the agent in your terminal, or connect from an SSH client (such as T3 Code or Claude Desktop) to `robkom-skills.sbx` and open the same folder path this clone uses on your host. To give `gh` access to GitHub, store a token on your host with `sbx secret set github --sandbox robkom-skills` rather than logging in inside the VM. See the [Docker Sandboxes docs](https://docs.docker.com/ai/sandboxes/) for one-time SSH setup and other sandbox options.
+Run `sbx env run` to open the agent in your terminal, or connect from an SSH client (such as T3 Code or Claude Desktop) to `robkom-skills.sbx` and open the same folder path this clone uses on your host. To give `gh` access to GitHub, store a token on your host with `sbx secret set github --sandbox robkom-skills` rather than logging in inside the VM. To avoid re-entering that token after recreating the sandbox, put a `secrets.github` entry (e.g. referencing 1Password or macOS Keychain) in a `*.local.sbxenv.yaml` file at the repo root and pass both files to `sbx env create sbxenv.yaml <name>.local.sbxenv.yaml`. See the [Docker Sandboxes docs](https://docs.docker.com/ai/sandboxes/) for one-time SSH setup and other sandbox options.
 
 ## Skill philosophy
 

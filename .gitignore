@@ -1,5 +1,8 @@
 .DS_Store
 node_modules/
 
+# Personal Docker Sandbox overrides (e.g. to set local secret references).
+*.local.sbxenv.yaml
+
 # Skill drafts under review. Promote a draft by moving it into plugins/robkom/skills/.
 /drafts/
