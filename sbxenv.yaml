@@ -2,12 +2,7 @@
 # Kept in the repo root so sbx mounts it read-only inside direct-mounted sandboxes.
 schemaVersion: "1"
 name: robkom-skills
-agent: ${{ env.args.agent }}
-
-args:
-  agent:
-    default: antigravity
-    description: Agent name (such as antigravity, claude, codex, or opencode) or agent kit reference
+agent: shell
 
 workspace: .
 
