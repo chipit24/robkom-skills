@@ -23,6 +23,10 @@ Run each review in a new subagent that doesn't inherit this conversation, so it 
 
 Keep one findings file for the whole run, in a temporary location outside the repo, so a fix commit can't include it. After each review, add its findings to the file, each with its verdict and a one-line reason. Give the file to every later review, so it sees everything found so far and looks for other problems.
 
+Have the reviewer ask whether each change needed to be made at all, not only whether the changed code is correct. A branch can meet its goal while adding abstraction, configuration, or consolidation for a future nobody has planned. For example, it might merge separate working code behind a shared helper, make a consumer do work it doesn't need, add an option with one caller, or edit files the goal didn't require. Speculative changes add coupling, extra code to read, and risk now for a need that may never arrive. Waiting until the need is real makes the decision cheaper and better informed.
+
+Not every change beyond the minimum is speculative. The docs for the change may name the future need as planned, or the generality may be the simplest way to meet the goal today. The reviewer weighs each case.
+
 ## Evidence
 
 Every finding needs evidence from exercising the code. Drop a finding that rests only on an assumption about what the code does. For example, an option that looks redundant may be there for a case the code doesn't show.
@@ -32,6 +36,8 @@ Every finding needs evidence from exercising the code. Drop a finding that rests
 
 Verify each fix the same way.
 
+When a finding says part of the change wasn't needed, one option is to revert that part, run the project's checks, and exercise the goal again. If the goal is still met and nothing in the repo uses what was removed, you have evidence for the finding rather than an assumption.
+
 Being blocked from gathering evidence is not the same as finding none. When something is in the way, such as an app that isn't running or a login, get past it yourself: start the app, or log in. If you can't, and the project's docs don't say how, stop and tell the user what you need. Never drop a finding because you were blocked.
 
 ## Fix
@@ -39,6 +45,8 @@ Being blocked from gathering evidence is not the same as finding none. When some
 Fix a verified finding when this branch caused it or made it worse, and the fix fits the goal of the change. Leave a finding that is outside the goal or needs a product decision for the report.
 
 Weigh each finding against what the app is. A PoC, prototype, or internal tool needs a working first version more than it needs edge cases handled. An app with no real users doesn't need hardening against attackers or traffic it doesn't have. A real hole in who can get in or change data still gets fixed.
+
+Check your own fixes for speculative changes too. A fix that adds generality the finding didn't call for creates the problem the review looks for.
 
 Commit each fix on its own, so the user can review or revert one fix without the others. Don't push unless the user asked for it.
 
